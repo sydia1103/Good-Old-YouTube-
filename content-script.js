@@ -28,6 +28,46 @@ function cleanup() {
   history.replaceState(history.state, document.title, url.toString());
 }
 
+function insertMenuItemAfter(el, id, text, url, icon) {
+  if (el) {
+    el.insertAdjacentHTML('afterEnd', `
+      <li class="guide-channel guide-notification-item overflowable-list-item" id="${id}" role="menuitem">
+        <a class="guide-item yt-uix-sessionlink yt-valign spf-link" href="${url}" title="${text}">
+          <span class="yt-valign-container">
+              <span class="thumb ${icon} yt-sprite"></span>
+              <span class="display-name no-count"><span>${text}</span></span>
+          </span>
+        </a>
+      </li>`);
+    return true;
+  }
+}
+
+function restoreHistory() {
+  const history = document.querySelector('#history-guide-item');
+  const donor = document.querySelector('.footer-history[href="/feed/history"]');
+  if (history || !donor) {
+    return;
+  }
+  const linkText = donor.textContent || 'History';
+  ['trending-guide-item', 'what_to_watch-guide-item']
+    .some(id => insertMenuItemAfter(document.querySelector(`#${id}`), 'history-guide-item', linkText, 'https://www.youtube.com/feed/history', 'guide-history-icon'));
+}
+
+function restoreMyChannel() {
+  const donor = document.querySelector('#creation-live-menu-item');
+  if (document.querySelector('#my-channel-guide-item') || !donor) {
+    return;
+  }
+  const url = donor.href.replace('studio.youtube.com', 'youtube.com').replace('/livestreaming', '');
+  if (url.indexOf('create_channel') >= 0) {
+    return;
+  }
+  const linkText = chrome.i18n.getMessage('my_channel_menu_title');
+  ['what_to_watch-guide-item', 'trending-guide-item']
+    .some(id => insertMenuItemAfter(document.querySelector(`#${id}`), 'my-channel-guide-item', linkText, url, 'guide-my-channel-icon'));
+}
+
 chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
   // Restore "show more" button
   function restoreShowMoreButton() {
@@ -76,6 +116,8 @@ chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
   window.addEventListener('spfdone', ({ detail }) => {
     cleanup();
     restoreShowMoreButton();
+    restoreHistory();
+    restoreMyChannel();
     if (!detail || !detail.response || !detail.response._redirecting) {
       document.documentElement.classList.remove('oldtube_redirecting');
       setTimeout(highlightNavLink, 0);
@@ -85,7 +127,8 @@ chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
   window.addEventListener('DOMContentLoaded', () => {
     cleanup();
     restoreShowMoreButton();
-
+    restoreHistory();
+    restoreMyChannel();
     if (redir) {
       const searchInput = document.getElementById("masthead-search-term");
       if (searchInput && searchInput.value === '""') {

@@ -69,9 +69,7 @@ function main(options) {
           .reduce((headers, header) => {
             const headerName = header.name.toLowerCase();
             if (!headerName.startsWith('x-youtube-client-')) {
-              if (headerName === 'cookie'
-                && url.includes("/results") && url.includes("spfreload=")
-              ) {
+              if (headerName === 'cookie' && url.includes("spfreload=")) {
                 header.value = header.value.replace(/VISITOR_INFO1_LIVE=[^;]+/, '');
               }
               headers.push(header);
@@ -111,7 +109,7 @@ function main(options) {
       return x;
     }
   }, {
-    urls: ['https://www.youtube.com/results*'],
+    urls: ['https://www.youtube.com/*'],
     types: ['main_frame'],
   }, ['blocking', 'responseHeaders']);
 
