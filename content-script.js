@@ -51,7 +51,7 @@ chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
     const isOldInterface = document.body.hasAttribute('data-spf-name');
     const spLinkSelector = isOldInterface ? 'spf-link' : 'yt-simple-endpoint';
     if (
-      isOldInterface && method !== 'off' || 
+      isOldInterface && method !== 'off' && method !== 'polymer' ||
       !isOldInterface && method === 'off'
     ) {
       return;
@@ -66,36 +66,31 @@ chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
   const redir = new URLSearchParams(location.search.replace('?', ''))
     .get(options.redirectParamName);
 
-  if (redir) {
-    document.documentElement.classList.add('oldtube_redirecting');
-  }
-
-  window.addEventListener('spfdone', () => {
-    document.documentElement.classList.remove('oldtube_redirecting');
+  window.addEventListener('spfdone', ({ detail }) => {
     restoreShowMoreButton();
-    setTimeout(highlightNavLink, 0);
+    if (!detail || !detail.response || !detail.response._redirecting) {
+      document.documentElement.classList.remove('oldtube_redirecting');
+      setTimeout(highlightNavLink, 0);
+    }
   });
 
   window.addEventListener('DOMContentLoaded', () => {
-    const searchInput = document.getElementById('masthead-search-term');
-    if (searchInput && searchInput.value === '""') {
-      searchInput.value = '';
-    }
-
     restoreShowMoreButton();
 
-    if (!document.querySelector('.spf-link')) {
-      return;
-    }
-
     if (redir) {
+      const searchInput = document.getElementById("masthead-search-term");
+      if (searchInput && searchInput.value === '""') {
+        searchInput.value = "";
+      }
+      document.documentElement.classList.add("oldtube_redirecting");
       redirect(redir);
     }
   });
 });
 
-chrome.runtime.onMessage.addListener(({ action, payload }) => {
-  if (action === 'go') {
-    redir(payload);
+chrome.runtime.onMessage.addListener(({ action, payload }, sender, sendResponse) => {
+  if (action === "go") {
+    redirect(payload);
   }
+  sendResponse();
 });

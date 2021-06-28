@@ -37,28 +37,25 @@ const NAVIGATION_JSON_TEMPLATE = {
   "title": ""
 }
 
-const CHANNEL_TEMPLATE_HEADER = `
-  <div
-    class="branded-page-v2-container branded-page-base-bold-titles branded-page-v2-container-flex-width branded-page-v2-has-top-row branded-page-v2-secondary-column-hidden"
-  >
-    <div class="branded-page-v2-col-container">
-      <div class="branded-page-v2-col-container-inner">
-        <div class="branded-page-v2-primary-col">
-          <div class="yt-card clearfix">
-            <div
-              class="branded-page-v2-body branded-page-v2-primary-column-content"
-              id=""
-            >
-              <ul id="browse-items-primary">`;
-
-const CHANNEL_TEMPLATE_FOOTER = `
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>`;
+function getFailedToReconstructMessage(e) {
+  return pbj = {
+    gridSectionRenderer: {
+      content: {
+        messageRenderer: {
+          text: {
+            runs: [{
+              text: "Failed to reconstruct the page: "
+            },
+            {
+              text: e.message,
+            }],
+          },
+          stack: e.stack
+        },
+      },
+    },
+  }
+}
 
 function getValue(obj, key, defaultValue = '') {
   if (key === "") {
@@ -100,8 +97,16 @@ function getText(t) {
   return '';
 }
 
-function defaultComponent(data) {
-  const contents = data.content ? [data.content] : data.contents || data.items;
+function getContents(data) {
+    if (typeof data !== "object") {
+      return;
+    }
+    let contents = data.content || data.contents || data.items || data.tabs;
+    return Array.isArray(contents) ? contents : [contents];
+}
+
+function defaultComponent(data = {}) {
+  const contents = getContents(data);
   return (contents && contents.map(renderComponent).join('')) || '';
 }
 
@@ -123,7 +128,7 @@ function videoComponent(data) {
     ownerBadges,
     badges,
   ] = extractValueSafe(data, [
-    ['videoId', 'dQw4w9WgXcQ'],
+    ['videoId', ''],
     ['thumbnail.thumbnails.0.url', 'about:blank'],
     ['lengthText', 'thumbnailOverlays.0.thumbnailOverlayTimeStatusRenderer.text', {}],
     [
@@ -149,6 +154,10 @@ function videoComponent(data) {
     ['ownerBadges', []],
     ['badges', []],
   ]);
+
+  if (!videoId) {
+    return '';
+  }
 
   const viewCount = getText(viewCountText);
   const durationSimpleText = getText(lengthText);
@@ -280,7 +289,7 @@ function videoComponent(data) {
       </div>
     </li>
   `;
-}
+};
 
 function movieComponent(data) {
   const [
@@ -293,7 +302,7 @@ function movieComponent(data) {
     titleA11yText,
     badges,
   ] = extractValueSafe(data, [
-    ['videoId', 'dQw4w9WgXcQ'],
+    ['videoId', ''],
     ['thumbnail.thumbnails.0.url', 'about:blank'],
     ['lengthText', 'thumbnailOverlays.0.thumbnailOverlayTimeStatusRenderer.text', {}],
     [
@@ -306,6 +315,10 @@ function movieComponent(data) {
     ['title.accessibility.accessibilityData.label', ''],
     ['badges', []],
   ]);
+
+  if (!videoId) {
+    return '';
+  }
 
   const durationSimpleText = getText(lengthText);
   const title = getText(titleText);
@@ -396,7 +409,7 @@ function movieComponent(data) {
       </div>
     </li>
   `;
-}
+};
 
 function channelComponent(data) {
   const [
@@ -412,6 +425,10 @@ function channelComponent(data) {
     ['navigationEndpoint.commandMetadata.webCommandMetadata.url', '/'],
     ['title', {}],
   ]);
+
+  if (!channelId) {
+    return '';
+  }
 
   const title = getText(titleText);
   const subscriberCount = getText(subscriberCountText);
@@ -451,7 +468,7 @@ function channelComponent(data) {
           <div class="yt-lockup-content">
             <div class="yt-lockup-byline">
               <a
-                href="${title}"
+                href="${url}"
                 class="yt-uix-sessionlink yt-user-name spf-link"
                 aria-label="Go to the user page for ${title}"
                 dir="ltr"
@@ -473,7 +490,7 @@ function channelComponent(data) {
       </div>
     </li>
   `;
-}
+};
 
 function gridSectionComponent(data) {
   const contents = defaultComponent(data);
@@ -487,10 +504,13 @@ function gridSectionComponent(data) {
       ${contents}
       </ul>
     </li>`;
-}
+};
 
 function feedContainerComponent(data) {
-  const title = getText(getValue(data, 'title', {}));
+  const [titleText] = extractValueSafe(data, [
+    ['title', 'header.itemSectionHeaderRenderer.title', {}]
+  ]);
+  const title = getText(titleText);
   const titleHTML = title
     ? `<div class="shelf-title-table">
         <div class="shelf-title-row">
@@ -525,13 +545,14 @@ function feedContainerComponent(data) {
         <div class="feed-item-dismissal-notices"></div>
       </div>
     </li>`;
-}
+};
 
 function messageComponent(data) {
-  const [subtext] = extractValueSafe(data, [
-    ['subtext.messageSubtextRenderer.text', 'text', { runs: [] }]
+  const [subtext, stack] = extractValueSafe(data, [
+    ['subtext.messageSubtextRenderer.text', 'text', { runs: [] }],
+    ['stack', ''],
   ]);
-  const messageHTML = subtext.runs.map(({ text, navigationEndpoint }) => {
+  let messageHTML = subtext.runs.map(({ text, navigationEndpoint }) => {
     if (navigationEndpoint) {
       const { urlEndpoint: { url }} = navigationEndpoint;
       return `<a href="${url}" class=" yt-uix-sessionlink " data-url="${url}">${text}</a>`;
@@ -543,77 +564,159 @@ function messageComponent(data) {
   return `<li>
       <div class="display-message">${messageHTML}</div>
     </li>`;
+};
+
+function sectionListComponent(data) {
+  let contents = defaultComponent(data);
+  if (data.continuations) {
+    data.continuations.map(continuationItemComponent);
+  }
+  return contents;
+}
+
+function continuationItemComponent(data) {
+  const [
+    trigger,
+    token,
+  ] = extractValueSafe(data, [
+    ['trigger', ''],
+    ['continuationEndpoint.continuationCommand.token', 'nextContinuationData.continuation', '']
+  ]);
+
+  const isAuto = trigger === "CONTINUATION_TRIGGER_ON_ITEM_SHOWN";
+  if (token) {
+    postContent += `
+      <button
+        class="yt-uix-button yt-uix-button-size-default yt-uix-button-default load-more-button yt-uix-load-more browse-items-load-more-button ${
+          isAuto ? "scrolldetect" : ""
+        }"
+        type="button"
+        onclick=";return false;"
+        aria-label="Load more
+      "
+        ${isAuto ? 'data-scrolldetect-callback="load-more-auto"' : ""}
+        data-uix-load-more-target-id="browse-items-primary"
+        data-uix-load-more-href="/browse_ajax?action_browse=1&amp;continuation=${token}"
+      >
+        <span class="yt-uix-button-content">
+          <span class="load-more-loading hid">
+            <span class="yt-spinner">
+              <span class="yt-spinner-img yt-sprite" title="Loading icon"></span>
+              Loading...
+            </span>
+          </span>
+          <span class="load-more-text">
+            Load more
+          </span>
+        </span>
+      </button>
+    `;
+  }
+
+  return '';
 }
 
 function renderComponent(data) {
-  const componentName = Object.keys(data)[0];
-  const componentProps = data[componentName];
-  let component = defaultComponent;
-  switch (componentName) {
-    case 'gridVideoRenderer':
-    case 'videoRenderer':
-      component = videoComponent;
-      break;
-    case 'movieRenderer':
-      component = movieComponent;
-      break;
-    case 'messageRenderer':
-      component = messageComponent;
-      break;
-    case 'gridChannelRenderer':
-      component = channelComponent;
-      break;
-    case 'shelfRenderer':
-    case 'richShelfRenderer':
-      component = feedContainerComponent;
-      break;
-    case 'gridSectionRenderer':
-      component = gridSectionComponent;
-      break;
+  try {
+    const componentName = Object.keys(data)[0];
+    const componentProps = data[componentName];
+    let component = defaultComponent;
+    switch (componentName) {
+      case 'gridVideoRenderer':
+      case 'videoRenderer':
+        component = videoComponent;
+        break;
+      case 'movieRenderer':
+        component = movieComponent;
+        break;
+      case 'messageRenderer':
+        component = messageComponent;
+        break;
+      case 'gridChannelRenderer':
+        component = channelComponent;
+        break;
+      case 'shelfRenderer':
+      case 'richShelfRenderer':
+      case 'richGridRenderer':
+      case 'itemSectionRenderer':
+        component = feedContainerComponent;
+        break;
+      case 'gridSectionRenderer':
+        component = gridSectionComponent;
+        break;
+      case 'continuationItemRenderer':
+        component = continuationItemComponent;
+        break;
+      case 'sectionListRenderer':
+        component = sectionListComponent;
+        break;
+    }
+    let content = component(componentProps);
+    return content;
+  } catch (e) {
+    return '';
   }
-  let content = component(componentProps);
-  return content;
 }
 
 function normalizePbj(pbj) {
-  const leafComponents = new Set(['gridVideoRenderer', 'videoRenderer', 'messageRenderer', 'movieRenderer', 'gridChannelRenderer']);
-  const wrapperComponents = new Set(['shelfRenderer', 'richShelfRenderer']);
+  const leafComponents = new Set([
+    'gridVideoRenderer', 'videoRenderer', 'movieRenderer',
+    'messageRenderer', 'gridChannelRenderer', 'continuationItemRenderer',
+  ]);
+  const wrapperComponents = new Set(['richGridRenderer', 'shelfRenderer', 'richShelfRenderer', 'sectionListRenderer']);
 
   const wrappers = [];
-  let currentWrapper = null;
+  let currentWrapperProps = null;
+  const orphanedVideos = [];
 
   function walk(root) {
+    if (typeof root !== 'object') {
+      return;
+    }
     const rendererName = Object.keys(root)[0];
+    logger.groupCollapsed(rendererName);
     const props = root[rendererName];
-    const contents = props.content ? [props.content] : (props.contents || props.items || props.tabs);
+    logger.info(props);
+    const contents = getContents(props);
 
     if (wrapperComponents.has(rendererName)) {
-      wrappers.push(root);
-      currentWrapper = null;
-      return;
+      wrappers.push({
+        [rendererName]: props,
+      });
+
+      if (currentWrapperProps !== null) {
+        delete root[rendererName];
+        logger.groupEnd(rendererName);
+        return;
+      }
+      currentWrapperProps = props;
     }
     
     if (leafComponents.has(rendererName)) {
-      if (currentWrapper === null) {
-        const gridWrapper = {
-          gridSectionRenderer: {
-            contents: [root],
-          },
-        };
-        wrappers.push(gridWrapper);
-        currentWrapper = gridWrapper;
-      } else {
-        currentWrapper.gridSectionRenderer.contents.push(root);
+      if (currentWrapperProps === null) {
+        orphanedVideos.push(root);
       }
+      logger.groupEnd(rendererName);
       return;
     }
 
     if (contents) {
       contents.forEach(walk);
     }
+    logger.groupEnd(rendererName);
   }
 
   walk(pbj.contents);
+
+  if (orphanedVideos.length > 0) {
+    wrappers.unshift({
+      gridSectionRenderer: { contents: orphanedVideos }
+    });
+  }
+
+  if (wrappers.length === 0) {
+    logger.warn("No renderable content found:", pbj);
+  }
   return {
     transformedPbj: {
       contents: wrappers,
@@ -621,15 +724,41 @@ function normalizePbj(pbj) {
   };
 }
 
+let postContent = '';
+
 function reconstructJSON(pbj, url) {
-  const data = normalizePbj(pbj);
-  const content = CHANNEL_TEMPLATE_HEADER
-    + renderComponent(data)
-    + CHANNEL_TEMPLATE_FOOTER;
+  let data; 
+  try {
+    data = normalizePbj(pbj);
+  } catch (e) {
+    logger.warn(e);
+    data = getFailedToReconstructMessage(e);
+  }
+  postContent = '';
+  const content = `
+    <div
+      class="branded-page-v2-container branded-page-base-bold-titles branded-page-v2-container-flex-width branded-page-v2-has-top-row branded-page-v2-secondary-column-hidden"
+    >
+      <div class="branded-page-v2-col-container">
+        <div class="branded-page-v2-col-container-inner">
+          <div class="branded-page-v2-primary-col">
+            <div class="yt-card clearfix">
+              <div
+                class="branded-page-v2-body branded-page-v2-primary-column-content"
+                id=""
+              >
+                <ul id="browse-items-primary">${renderComponent(data)}</ul>
+                ${postContent}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
 
   url = url
-      .replace('https://www.youtube.com', '')
-      .replace(/(&|\?)spf=navigate/, '');
+    .replace('https://www.youtube.com', '')
+    .replace(/(&|\?)spf=navigate/, '');
 
   const lastWord = url.split("/").pop().split('?').shift();
   const titleParts = ['YouTube'];
@@ -660,7 +789,7 @@ const rewriteResponse = (() => {
 
   function rewriteResponseFirefox({ url, requestId }) {
     const data = [];
-    const filter = browser.webRequest.filterResponseData(requestId);
+    const filter = chrome.webRequest.filterResponseData(requestId);
     filter.ondata = (event) => data.push(event.data);
     filter.onstop = () => {
       let str = '';
@@ -677,7 +806,7 @@ const rewriteResponse = (() => {
         const json = extractParseAndReconstruct(str, url);
         filter.write(encoder.encode(json));
       } catch (e) {
-        console.warn('Could not reconstruct JSON:', e);
+        logger.warn('Could not reconstruct JSON:', e);
       }
       filter.close();
     };
@@ -687,14 +816,15 @@ const rewriteResponse = (() => {
 
   function rewriteResponseChromium({ url, tabId }) {
     const xhrURL = new URL(url);
-    const params = new URLSearchParams(xhrURL.search);
+    const params = new URLSearchParams(xhrURL.search.replace('?', ''));
     params.delete("spf");
     params.delete("spfreload");
     xhrURL.search = params.toString();
 
     let cachedJSON = responseCache.get(xhrURL.pathname);
+    const u = xhrURL.toString();
 
-    fetch(xhrURL.toString())
+    fetch(u)
       .then((r) => r.text())
       .then((str) => {
         const json = extractParseAndReconstruct(str, url);
@@ -702,17 +832,27 @@ const rewriteResponse = (() => {
         if (!cachedJSON) {
           chrome.tabs.sendMessage(tabId, {
             action: 'go',
-            payload: url.replace('https://www.youtube.com', ''),
+            payload: u.replace('https://www.youtube.com', ''),
+          }, () => {
+            const { lastError } = chrome.runtime;
+            if (lastError) {
+              chrome.tabs.reload(tabId);
+            }
           });
-          chrome.tabs.reload(tabId);
         }
       })
-      .catch((e) => console.warn('Could not reconstruct JSON:', e));
+      .catch((e) => logger.warn('Could not reconstruct JSON:', e));
 
+    const redirectUrl = cachedJSON
+      ? `data:;charset=utf-8,${encodeURIComponent(cachedJSON)}`
+      : 'data:,{ "_redirecting": true }';
+    responseCache.delete(xhrURL.pathname);
     return {
-      redirectUrl: cachedJSON ? `data:;charset=utf-8,${encodeURIComponent(cachedJSON)}` : `data:,{}`,
+      redirectUrl,
     };
   }
 
-  return window.browser ? rewriteResponseFirefox : rewriteResponseChromium;
+  return chrome.webRequest.filterResponseData
+    ? rewriteResponseFirefox
+    : rewriteResponseChromium;
 })();

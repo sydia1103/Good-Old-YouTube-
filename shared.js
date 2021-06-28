@@ -1,13 +1,14 @@
+const RECONSTRUCT_POSSIBLE = !window.browser || browser.webRequest.filterResponseData;
 const PAGES = {
   pageHome: {
     pathnameRe: /^\/(index)?$/g,
     name: 'home',
-    methods: ['reconstruct'],
+    methods: RECONSTRUCT_POSSIBLE ? ['reconstruct'] : [],
   },
   pageFeed: {
     pathnameRe: /^\/feed\//g,
     name: 'feed',
-    methods: ['reconstruct'],
+    methods: RECONSTRUCT_POSSIBLE ? ['reconstruct'] : [],
   },
   pageChannel: {
     pathnameRe: /^\/(channel|c|user)\//g,
@@ -17,7 +18,7 @@ const PAGES = {
   pageVideo: {
     pathnameRe: /^\/watch$/g,
     name: 'video',
-    methods: ['user-agent', 'redirect'],
+    methods: [],
   },
   pagePlaylist: {
     pathnameRe: /^\/playlist$/g,
@@ -32,11 +33,14 @@ const PAGES = {
 }
 
 function getPageFixMethod(urlStr, options) {
-  const { pathname } = new URL(urlStr);
-  for (let [key, page] of Object.entries(PAGES)) {
-    if (pathname.match(page.pathnameRe)) {
-      return options[key];
+  try {
+    const { pathname } = new URL(urlStr);
+    for (let key in PAGES) {
+      const page = PAGES[key];
+      if (pathname.match(page.pathnameRe)) {
+        return options[key];
+      }
     }
-  }
+  } catch (e) {}
   return null;
 }

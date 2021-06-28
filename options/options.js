@@ -1,5 +1,5 @@
 const OPTIONS = [
-  'redirectUrlPath', 'restoreShowMoreButton',
+  'redirectUrlPath', 'restoreShowMoreButton', 'enableLogging',
   'pageHome', 'pageFeed', 'pageVideo', 'pagePlaylist', 'pageChannel', 'pageGaming',
 ];
 

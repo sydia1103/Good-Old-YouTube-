@@ -3,15 +3,16 @@
 
   "name": "Good Old YouTube",
   "manifest_version": 2,
-  "version": "1.12.2",
+  "version": "1.13.4",
   "description": "Switch back to classic YouTube interface!",
   "icons": {
     "128": "images/logo.png"
   },
   "background": {
     "scripts": [
-      "options/default-options.js",
       "shared.js",
+      "options/default-options.js",
+      "logger.js",
       "reconstruct.js",
       "background.js"
     ]
@@ -19,7 +20,7 @@
   "content_scripts": [
     {
       "matches": [
-        "*://www.youtube.com/*"
+        "https://www.youtube.com/*"
       ],
       "css": [
         "styles/hide-alert.css"
@@ -39,8 +40,5 @@
     "storage",
     "webRequest",
     "webRequestBlocking"
-  ],
-  "web_accessible_resources": [
-    "test.json"
   ]
 }

@@ -16,7 +16,7 @@ function main(options) {
       : [url, 'disable_polymer', '1'];
 
     const u = new URL(redirectUrl);
-    const params = new URLSearchParams(u.search);
+    const params = new URLSearchParams(u.search.replace('?', ''));
     if (params.get(paramName) === paramValue) {
       return {};
     }
@@ -31,9 +31,20 @@ function main(options) {
     types: ["main_frame", "xmlhttprequest"],
   }, ['blocking']);
 
-  chrome.webRequest.onBeforeSendHeaders.addListener(({ url, requestHeaders }) => {
+  chrome.webRequest.onBeforeSendHeaders.addListener(({ url, type, requestHeaders }) => {
+    if (type === 'xmlhttprequest' && url.includes('/browse_ajax?')) {
+      return {
+        requestHeaders: requestHeaders
+          .filter(header => !header.name.toLowerCase().startsWith('x-youtube-client-'))
+          .concat([
+            { name: 'X-YouTube-Client-Name', value: '1' },
+            { name: 'X-YouTube-Client-Version', value: '1.20200731.02.01' },
+          ]),
+      }
+    }
+
     const method = getPageFixMethod(url, options);
-    if (method === 'off' || method === 'polymer') {
+    if (type !== 'main_frame' || method === 'off' || method === 'polymer') {
       return {};
     }
 
@@ -46,7 +57,7 @@ function main(options) {
     };
   }, {
     urls: ["https://www.youtube.com/*"],
-    types: ["main_frame"],
+    types: ["main_frame", "xmlhttprequest"],
   }, ['blocking', 'requestHeaders']);
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -65,5 +76,17 @@ function main(options) {
     }
   });
 }
+
+function versionToFloat(version) {
+  const [major = '00', minor = '00', patch = '00'] = version
+    .split('.').map(v => ('00' + v).slice(-2));
+  return parseFloat(`${major}.${minor}${patch}`);
+}
+
+chrome.runtime.onInstalled.addListener(({ reason, previousVersion }) => {
+  if (reason === 'update' && versionToFloat(previousVersion) < 1.1304) {
+    getOptions(() => resetOption("pageVideo"));
+  }
+});
 
 getOptions(main);
