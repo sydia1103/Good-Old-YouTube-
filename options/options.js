@@ -1,6 +1,6 @@
 const OPTIONS = [
   'redirectUrlPath', 'restoreShowMoreButton', 'enableLogging',
-  'pageHome', 'pageFeed', 'pageVideo', 'pagePlaylist', 'pageChannel', 'pageGaming',
+  'pageHome', 'pageFeed', 'pageVideo', 'pagePlaylist', 'pageChannel', 'pageGaming', 'pageOthers'
 ];
 
 function showCurrentOptions(options) {
@@ -18,7 +18,7 @@ getOptions((options) => {
   function generatePageFixOptions() {
     const html = Object.keys(PAGES).map((key) => {
       const { name, methods } = PAGES[key];
-      const optNames = [...new Set(['user-agent', 'polymer', 'redirect', 'off'].concat(methods))];
+      const optNames = [...new Set(methods.concat(['headers', 'polymer', 'off']))];
       const opts = optNames.map(n => {
         return `<option value="${n}" ${options[key] === n ? 'selected' : ''}>
           ${n} ${(n === 'off' || methods.includes(n)) ? '' : '(broken)'}

@@ -1,7 +1,43 @@
+function addPbj(requestUrl) {
+  const url = new URL(requestUrl);
+  const params = new URLSearchParams(url.search.replace('?', ''));
+  if (params.get('pbj') !== null) {
+    return {};
+  }
+  if (params.get('spf') !== 'navigate') {
+    params.delete('spf');
+  }
+  params.set('pbj', '1');
+  params.delete('disable_polymer');
+  params.delete('spfreload');
+  url.search = params.toString();
+  return {
+    redirectUrl: url.toString(),
+  };
+}
+
+function replaceParam(redirectUrl, paramName, paramValue) {
+  const url = new URL(redirectUrl);
+  const params = new URLSearchParams(url.search.replace('?', ''));
+  if (params.get(paramName) === paramValue) {
+    return {};
+  }
+  params.set(paramName, paramValue);
+  url.search = params.toString();
+
+  return {
+    redirectUrl: url.toString(),
+  };
+}
+
 function main(options) {
   chrome.webRequest.onBeforeRequest.addListener((request) => {
     const { url, type } = request;
     const method = getPageFixMethod(url, options);
+
+    if (method === 'headers') {
+      return addPbj(url);
+    }
 
     if (type === 'xmlhttprequest' && method === 'reconstruct' && url.includes('spf=navigate')) {
       return rewriteResponse(request);
@@ -14,25 +50,15 @@ function main(options) {
     const [redirectUrl, paramName, paramValue] = (method === 'redirect' || method === 'reconstruct')
       ? [`https://www.youtube.com/${options.redirectUrlPath}`, options.redirectParamName, url]
       : [url, 'disable_polymer', '1'];
-
-    const u = new URL(redirectUrl);
-    const params = new URLSearchParams(u.search.replace('?', ''));
-    if (params.get(paramName) === paramValue) {
-      return {};
-    }
-    params.set(paramName, paramValue);
-    u.search = params.toString();
-
-    return {
-      redirectUrl: u.toString(),
-    };
+    return replaceParam(redirectUrl, paramName, paramValue);
   }, {
-    urls: ["https://www.youtube.com/*"],
-    types: ["main_frame", "xmlhttprequest"],
+    urls: ['https://www.youtube.com/*'],
+    types: ['main_frame', 'xmlhttprequest'],
   }, ['blocking']);
 
   chrome.webRequest.onBeforeSendHeaders.addListener(({ url, type, requestHeaders }) => {
-    if (type === 'xmlhttprequest' && url.includes('/browse_ajax?')) {
+    const method = getPageFixMethod(url, options);
+    if (type === 'xmlhttprequest' || method === 'headers') {
       return {
         requestHeaders: requestHeaders
           .filter(header => !header.name.toLowerCase().startsWith('x-youtube-client-'))
@@ -43,21 +69,20 @@ function main(options) {
       }
     }
 
-    const method = getPageFixMethod(url, options);
     if (type !== 'main_frame' || method === 'off' || method === 'polymer') {
       return {};
     }
 
     const uaHeader = requestHeaders
-      .find(header => header.name.toLowerCase() === "user-agent");
+      .find(header => header.name.toLowerCase() === 'user-agent');
     uaHeader.value = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
 
     return {
       requestHeaders,
     };
   }, {
-    urls: ["https://www.youtube.com/*"],
-    types: ["main_frame", "xmlhttprequest"],
+    urls: ['https://www.youtube.com/*'],
+    types: ['main_frame', 'xmlhttprequest'],
   }, ['blocking', 'requestHeaders']);
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -83,9 +108,9 @@ function versionToFloat(version) {
   return parseFloat(`${major}.${minor}${patch}`);
 }
 
-chrome.runtime.onInstalled.addListener(({ reason, previousVersion }) => {
-  if (reason === 'update' && versionToFloat(previousVersion) < 1.1304) {
-    getOptions(() => resetOption("pageVideo"));
+chrome.runtime.onInstalled && chrome.runtime.onInstalled.addListener(({ reason, previousVersion }) => {
+  if (reason === 'update' && versionToFloat(previousVersion) < 1.14) {
+    getOptions(() => resetOptions());
   }
 });
 

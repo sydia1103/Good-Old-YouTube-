@@ -20,6 +20,14 @@ function highlightNavLink() {
   }
 }
 
+function cleanup() {
+  const url = new URL(location.href);
+  const params = new URLSearchParams(url.search.replace('?', ''));
+  ['spf', 'pbj', 'spfreload', 'disable_polymer'].forEach(name => params.delete(name));
+  url.search = params.toString();
+  history.replaceState(history.state, document.title, url.toString());
+}
+
 chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
   // Restore "show more" button
   function restoreShowMoreButton() {
@@ -40,23 +48,22 @@ chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
     );
   }
 
-  // Force page reload when navigating between old/new interfaces
+  // Force page reload when navigating between old/new interfaces or different page fixes
   document.documentElement.addEventListener('click', e => {
     let node = e.target;
     const anchor = node.closest('a');
     if (!anchor) {
       return;
     }
-    const method = getPageFixMethod(anchor.href, options);
+
     const isOldInterface = document.body.hasAttribute('data-spf-name');
-    const spLinkSelector = isOldInterface ? 'spf-link' : 'yt-simple-endpoint';
-    if (
-      isOldInterface && method !== 'off' && method !== 'polymer' ||
-      !isOldInterface && method === 'off'
-    ) {
+    const currentPageFixMethod = isOldInterface ? getPageFixMethod(location.href, options) : 'off';
+    const method = getPageFixMethod(anchor.href, options);
+    if (method === currentPageFixMethod) {
       return;
     }
 
+    const spLinkSelector = isOldInterface ? 'spf-link' : 'yt-simple-endpoint';
     while (node && node.parentElement) {
       node.classList.remove(spLinkSelector);
       node = node.parentElement;
@@ -67,6 +74,7 @@ chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
     .get(options.redirectParamName);
 
   window.addEventListener('spfdone', ({ detail }) => {
+    cleanup();
     restoreShowMoreButton();
     if (!detail || !detail.response || !detail.response._redirecting) {
       document.documentElement.classList.remove('oldtube_redirecting');
@@ -75,6 +83,7 @@ chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
   });
 
   window.addEventListener('DOMContentLoaded', () => {
+    cleanup();
     restoreShowMoreButton();
 
     if (redir) {
@@ -87,6 +96,8 @@ chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
     }
   });
 });
+
+cleanup();
 
 chrome.runtime.onMessage.addListener(({ action, payload }, sender, sendResponse) => {
   if (action === "go") {

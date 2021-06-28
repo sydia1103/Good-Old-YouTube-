@@ -1,16 +1,18 @@
 const DEFAULT_OPTIONS = {
   forceNewUIHardLinks: true,
+  fixHeaders: true,
   redirectUrlPath: 'results?search_query=%22%22',
   redirectParamName: '_ot_redir',
   restoreShowMoreButton: true,
   enableLogging: false,
   // pages:
-  pageHome: RECONSTRUCT_POSSIBLE ? 'reconstruct' : 'off',
-  pageFeed: RECONSTRUCT_POSSIBLE ? 'reconstruct' : 'off',
-  pageVideo: 'off',
-  pagePlaylist: 'polymer',
-  pageChannel: 'polymer',
-  pageGaming: 'polymer',
+  pageHome: 'headers',
+  pageFeed: 'headers',
+  pageVideo: 'headers',
+  pagePlaylist: 'headers',
+  pageChannel: 'headers',
+  pageGaming: 'headers',
+  pageOthers: 'headers',
 };
 
 const bg = chrome.extension.getBackgroundPage();
