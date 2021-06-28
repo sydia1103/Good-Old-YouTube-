@@ -1,4 +1,5 @@
-const RECONSTRUCT_POSSIBLE = !window.browser || browser.webRequest.filterResponseData;
+const IS_FIREFOX = window.browser;
+const RECONSTRUCT_POSSIBLE = !IS_FIREFOX || browser.webRequest.filterResponseData;
 const PAGES = {
   pageHome: {
     pathnameRe: /^\/(index)?$/g,

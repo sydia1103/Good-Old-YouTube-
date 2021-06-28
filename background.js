@@ -9,7 +9,6 @@ function addPbj(requestUrl) {
   }
   params.set('pbj', '1');
   params.delete('disable_polymer');
-  params.delete('spfreload');
   url.search = params.toString();
   return {
     redirectUrl: url.toString(),
@@ -29,6 +28,12 @@ function replaceParam(redirectUrl, paramName, paramValue) {
     redirectUrl: url.toString(),
   };
 }
+
+const ON_BEFORE_SEND_HEADERS_EXTRA = ['blocking', 'requestHeaders'];
+if (!IS_FIREFOX) {
+  ON_BEFORE_SEND_HEADERS_EXTRA.push('extraHeaders');
+}
+const MAX_COOKIE_REGENERATION_ATTEMPTS = 20; // 10
 
 function main(options) {
   chrome.webRequest.onBeforeRequest.addListener((request) => {
@@ -61,8 +66,18 @@ function main(options) {
     if (type === 'xmlhttprequest' || method === 'headers') {
       return {
         requestHeaders: requestHeaders
-          .filter(header => !header.name.toLowerCase().startsWith('x-youtube-client-'))
-          .concat([
+          .reduce((headers, header) => {
+            const headerName = header.name.toLowerCase();
+            if (!headerName.startsWith('x-youtube-client-')) {
+              if (headerName === 'cookie'
+                && url.includes("/results") && url.includes("spfreload=")
+              ) {
+                header.value = header.value.replace(/VISITOR_INFO1_LIVE=[^;]+/, '');
+              }
+              headers.push(header);
+            }
+            return headers;
+          }, [
             { name: 'X-YouTube-Client-Name', value: '1' },
             { name: 'X-YouTube-Client-Version', value: '1.20200731.02.01' },
           ]),
@@ -83,7 +98,22 @@ function main(options) {
   }, {
     urls: ['https://www.youtube.com/*'],
     types: ['main_frame', 'xmlhttprequest'],
-  }, ['blocking', 'requestHeaders']);
+  }, ON_BEFORE_SEND_HEADERS_EXTRA);
+
+  chrome.webRequest.onHeadersReceived.addListener(({ url, responseHeaders }) => {
+    const isBadCookie = responseHeaders
+      .some(h => h.name.toLowerCase() === 'content-disposition' && h.value.toLowerCase().includes('json.txt'));
+
+    if (isBadCookie) {
+      let [, currentAttempt] = url.match(/spfreload=(\d+)/i) || [0, '10'];
+      currentAttempt = Math.min(parseInt(currentAttempt), MAX_COOKIE_REGENERATION_ATTEMPTS);
+      let x = replaceParam(url, 'spfreload', `${currentAttempt + 1}`);
+      return x;
+    }
+  }, {
+    urls: ['https://www.youtube.com/results*'],
+    types: ['main_frame'],
+  }, ['blocking', 'responseHeaders']);
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.type) {
