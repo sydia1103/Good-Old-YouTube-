@@ -1,0 +1,33 @@
+{
+"update_url": "https://clients2.google.com/service/update2/crx",
+
+  "name": "Good Old YouTube",
+  "manifest_version": 2,
+  "version": "1.3",
+  "description": "Switch back to classic YouTube interface!",
+  "icons": {
+    "128": "images/logo.png"
+  },
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://youtube.com/*",    
+        "*://www.youtube.com/*"
+      ],
+      "css": [
+        "styles/hide-alert.css"
+      ]
+    }
+  ],
+  "permissions": [
+    "*://youtube.com/*",    
+    "*://www.youtube.com/*",
+    "webRequest",
+    "webRequestBlocking"
+  ]
+}
