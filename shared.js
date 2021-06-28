@@ -4,36 +4,41 @@ const PAGES = {
   pageHome: {
     pathnameRe: /^\/(index)?$/g,
     name: 'home',
-    methods: RECONSTRUCT_POSSIBLE ? ['headers', 'reconstruct'] : ['headers'],
+    methods: ['headers'],
   },
   pageFeed: {
     pathnameRe: /^\/feed\//g,
     name: 'feed',
-    methods: RECONSTRUCT_POSSIBLE ? ['headers', 'reconstruct'] : ['headers'],
+    methods: ['headers'],
   },
   pageChannel: {
-    pathnameRe: /^\/(channel|c|user)\//g,
+    pathnameRe: /^\/(channel|c|user|sports|news|live|learning|360)(\/|$)/g,
     name: 'channel',
-    methods: ['headers', 'polymer', 'redirect'],
+    methods: ['headers'],
   },
   pageVideo: {
     pathnameRe: /^\/watch$/g,
     name: 'video',
     methods: ['headers'],
   },
+  pageResults: {
+    pathnameRe: /^\/results$/g,
+    name: 'search',
+    methods: [],
+  },
   pagePlaylist: {
     pathnameRe: /^\/playlist$/g,
     name: 'playlist',
-    methods: ['headers', 'polymer', 'redirect'],
+    methods: ['headers'],
   },
   pageGaming: {
-    pathnameRe: /^\/gaming/g,
+    pathnameRe: /^\/gaming$/g,
     name: 'gaming',
-    methods: ['headers', 'polymer', 'redirect'],
+    methods: ['headers'],
   },
   pageOthers: {
     name: 'other pages',
-    methods: ['headers', 'polymer', 'user-agent'],
+    methods: ['headers'],
   }
 }
 

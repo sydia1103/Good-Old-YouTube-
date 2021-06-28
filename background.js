@@ -8,7 +8,6 @@ function addPbj(requestUrl) {
     params.delete('spf');
   }
   params.set('pbj', '1');
-  params.delete('disable_polymer');
   url.search = params.toString();
   return {
     redirectUrl: url.toString(),
@@ -34,31 +33,30 @@ if (!IS_FIREFOX) {
   ON_BEFORE_SEND_HEADERS_EXTRA.push('extraHeaders');
 }
 const MAX_COOKIE_REGENERATION_ATTEMPTS = 20; // 10
+const CHANNELS = new Set(['channel', 'user', 'c']);
 
 function main(options) {
   chrome.webRequest.onBeforeRequest.addListener((request) => {
-    const { url, type } = request;
-    const method = getPageFixMethod(url, options);
+    const { type } = request;
+    const method = getPageFixMethod(request.url, options);
 
-    if (method === 'headers') {
-      return addPbj(url);
+    if (method !== 'headers') {
+      return;
     }
 
-    if (type === 'xmlhttprequest' && method === 'reconstruct' && url.includes('spf=navigate')) {
-      return rewriteResponse(request);
+    let url = new URL(request.url);
+    if (url.pathname.match(PAGES.pageChannel.pathnameRe))
+    {
+      const path = url.pathname.split('/');
+      const i = CHANNELS.has(path[1]) ? 3 : 2;
+      path[i] = !path[i] ? 'Featured' : (path[i].charAt(0).toUpperCase() + path[i].slice(1));
+      url.pathname = path.join('/');
     }
 
-    if (type !== 'main_frame' || !method || method === 'off' || method === 'user-agent') {
-      return {};
-    }
-
-    const [redirectUrl, paramName, paramValue] = (method === 'redirect' || method === 'reconstruct')
-      ? [`https://www.youtube.com/${options.redirectUrlPath}`, options.redirectParamName, url]
-      : [url, 'disable_polymer', '1'];
-    return replaceParam(redirectUrl, paramName, paramValue);
+    return addPbj(url.toString());
   }, {
     urls: ['https://www.youtube.com/*'],
-    types: ['main_frame', 'xmlhttprequest'],
+    types: ['main_frame', 'xmlhttprequest', 'other'],
   }, ['blocking']);
 
   chrome.webRequest.onBeforeSendHeaders.addListener(({ url, type, requestHeaders }) => {
@@ -70,7 +68,7 @@ function main(options) {
             const headerName = header.name.toLowerCase();
             if (!headerName.startsWith('x-youtube-client-')) {
               if (headerName === 'cookie' && url.includes("spfreload=")) {
-                header.value = header.value.replace(/VISITOR_INFO1_LIVE=[^;]+/, '');
+                header.value = header.value.replace(/VISITOR_INFO1_LIVE=[^;]+;?/, '');
               }
               headers.push(header);
             }
@@ -81,18 +79,6 @@ function main(options) {
           ]),
       }
     }
-
-    if (type !== 'main_frame' || method === 'off' || method === 'polymer') {
-      return {};
-    }
-
-    const uaHeader = requestHeaders
-      .find(header => header.name.toLowerCase() === 'user-agent');
-    uaHeader.value = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
-
-    return {
-      requestHeaders,
-    };
   }, {
     urls: ['https://www.youtube.com/*'],
     types: ['main_frame', 'xmlhttprequest'],
@@ -105,8 +91,7 @@ function main(options) {
     if (isBadCookie) {
       let [, currentAttempt] = url.match(/spfreload=(\d+)/i) || [0, '10'];
       currentAttempt = Math.min(parseInt(currentAttempt), MAX_COOKIE_REGENERATION_ATTEMPTS);
-      let x = replaceParam(url, 'spfreload', `${currentAttempt + 1}`);
-      return x;
+      return replaceParam(url, 'spfreload', `${currentAttempt + 1}`);
     }
   }, {
     urls: ['https://www.youtube.com/*'],
@@ -137,7 +122,7 @@ function versionToFloat(version) {
 }
 
 chrome.runtime.onInstalled && chrome.runtime.onInstalled.addListener(({ reason, previousVersion }) => {
-  if (reason === 'update' && versionToFloat(previousVersion) < 1.14) {
+  if (reason === 'update' && versionToFloat(previousVersion) < 1.16) {
     getOptions(() => resetOptions());
   }
 });

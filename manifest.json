@@ -3,7 +3,7 @@
 
   "name": "Good Old YouTube",
   "manifest_version": 2,
-  "version": "1.15.2",
+  "version": "1.16.0",
   "description": "Switch back to classic YouTube interface!",
   "default_locale": "en",
   "icons": {
@@ -13,8 +13,6 @@
     "scripts": [
       "shared.js",
       "options/default-options.js",
-      "logger.js",
-      "reconstruct.js",
       "background.js"
     ]
   },

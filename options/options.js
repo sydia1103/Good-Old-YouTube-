@@ -1,6 +1,5 @@
 const OPTIONS = [
-  'redirectUrlPath', 'restoreShowMoreButton', 'enableLogging',
-  'pageHome', 'pageFeed', 'pageVideo', 'pagePlaylist', 'pageChannel', 'pageGaming', 'pageOthers'
+  'pageHome', 'pageFeed', 'pageVideo', 'pagePlaylist', 'pageChannel', 'pageGaming', 'pageResults', 'pageOthers'
 ];
 
 function showCurrentOptions(options) {
@@ -18,7 +17,7 @@ getOptions((options) => {
   function generatePageFixOptions() {
     const html = Object.keys(PAGES).map((key) => {
       const { name, methods } = PAGES[key];
-      const optNames = [...new Set(methods.concat(['headers', 'polymer', 'off']))];
+      const optNames = [...new Set(methods.concat(['headers', 'off']))];
       const opts = optNames.map(n => {
         return `<option value="${n}" ${options[key] === n ? 'selected' : ''}>
           ${n} ${(n === 'off' || methods.includes(n)) ? '' : '(broken)'}
@@ -47,15 +46,9 @@ getOptions((options) => {
   });
 
   document.body.addEventListener('click', (ev) => {
-    switch (ev.target.id) {
-      case 'resetRedirectURL':
-        resetOption('redirectUrlPath');
-        showCurrentOptions(options);
-        break;
-      case 'resetAll':
-        resetOptions();
-        showCurrentOptions(options);
-        break;
+    if (ev.target.id === 'resetAll') {
+      resetOptions();
+      showCurrentOptions(options);
     }
   });
 });

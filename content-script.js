@@ -1,25 +1,3 @@
-let redirElement = null;
-function redirect(url) {
-  if (!redirElement) {
-    redirElement = document.createElement('a');
-    redirElement.className = 'spf-link';
-    document.body.appendChild(redirElement);
-  }
-  redirElement.href = url;
-  redirElement.click();
-}
-
-function highlightNavLink() {
-  const menu = document.getElementById('appbar-guide-menu');
-  if (!menu) {
-    return;
-  }
-  const link = menu.querySelector(`a[href="${location.pathname}"]`);
-  if (link) {
-    link.classList.add('guide-item-selected');
-  }
-}
-
 function cleanup() {
   const url = new URL(location.href);
   const params = new URLSearchParams(url.search.replace('?', ''));
@@ -71,10 +49,6 @@ function restoreMyChannel() {
 chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
   // Restore "show more" button
   function restoreShowMoreButton() {
-    if (!options.restoreShowMoreButton) {
-      return;
-    }
-
     const actionPanel = document.getElementById('action-panel-details');
     const showMore = document.querySelector('button[data-gen204="feature=watch-show-more-metadata"]');
 
@@ -110,41 +84,15 @@ chrome.runtime.sendMessage({ type: 'getOptions' }, (options) => {
     }
   }, true);
 
-  const redir = new URLSearchParams(location.search.replace('?', ''))
-    .get(options.redirectParamName);
-
-  window.addEventListener('spfdone', ({ detail }) => {
+  const cleanupAndRestore = () => {
     cleanup();
     restoreShowMoreButton();
     restoreHistory();
-    restoreMyChannel();
-    if (!detail || !detail.response || !detail.response._redirecting) {
-      document.documentElement.classList.remove('oldtube_redirecting');
-      setTimeout(highlightNavLink, 0);
-    }
-  });
+    restoreMyChannel();    
+  }
 
-  window.addEventListener('DOMContentLoaded', () => {
-    cleanup();
-    restoreShowMoreButton();
-    restoreHistory();
-    restoreMyChannel();
-    if (redir) {
-      const searchInput = document.getElementById("masthead-search-term");
-      if (searchInput && searchInput.value === '""') {
-        searchInput.value = "";
-      }
-      document.documentElement.classList.add("oldtube_redirecting");
-      redirect(redir);
-    }
-  });
+  window.addEventListener('spfdone', cleanupAndRestore);
+  window.addEventListener('DOMContentLoaded', cleanupAndRestore);
 });
 
 cleanup();
-
-chrome.runtime.onMessage.addListener(({ action, payload }, sender, sendResponse) => {
-  if (action === "go") {
-    redirect(payload);
-  }
-  sendResponse();
-});

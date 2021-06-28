@@ -1,17 +1,11 @@
 const DEFAULT_OPTIONS = {
-  forceNewUIHardLinks: true,
-  fixHeaders: true,
-  redirectUrlPath: 'results?search_query=%22%22',
-  redirectParamName: '_ot_redir',
-  restoreShowMoreButton: true,
-  enableLogging: false,
-  // pages:
   pageHome: 'headers',
   pageFeed: 'headers',
   pageVideo: 'headers',
   pagePlaylist: 'headers',
   pageChannel: 'headers',
   pageGaming: 'headers',
+  pageResults: 'off',
   pageOthers: 'headers',
 };
 
