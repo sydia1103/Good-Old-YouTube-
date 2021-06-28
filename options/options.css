@@ -1,0 +1,32 @@
+#options {
+  min-width: 500px;
+  margin-top: 10px;
+}
+
+#options input {
+  vertical-align: middle;
+}
+
+#redirectOptions {
+  display: flex;
+  line-height: 1.7;
+  margin: 0 0 10px 25px;
+}
+
+#redirectOptions input {
+  flex-grow: 1;
+  margin: 0 2px;
+}
+
+#pageFixes div {
+  display: flex;
+}
+
+#pageFixes label {
+  min-width: 100px;
+  text-transform: capitalize;
+}
+
+#pageFixes select {
+  min-width: 150px;
+}

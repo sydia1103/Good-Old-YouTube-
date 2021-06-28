@@ -1,2 +1,5 @@
 #old-browser-alert, #ticker-content { display: none!important; }
-#movie_player .ytp-gradient-bottom { background: none!important; }
+
+html.oldtube_redirecting #content {
+  visibility: hidden;
+}

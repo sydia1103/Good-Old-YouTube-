@@ -1,47 +1,69 @@
-chrome.webRequest.onBeforeSendHeaders.addListener(({ requestHeaders }) => {
-  let cookieHeader = requestHeaders
-    .find(header => header.name.toLowerCase() === "cookie");
+function main(options) {
+  chrome.webRequest.onBeforeRequest.addListener((request) => {
+    const { url, type } = request;
+    const method = getPageFixMethod(url, options);
 
-  const uaHeader = requestHeaders
-    .find(header => header.name.toLowerCase() === "user-agent");
+    if (type === 'xmlhttprequest' && method === 'reconstruct' && url.includes('spf=navigate')) {
+      return rewriteResponse(request);
+    }
 
-  uaHeader.value = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
+    if (type !== 'main_frame' || !method || method === 'off' || method === 'user-agent') {
+      return {};
+    }
 
-  if (!cookieHeader) {
-    cookieHeader = {
-      name: 'Cookie',
-      value: '',
+    const [redirectUrl, paramName, paramValue] = (method === 'redirect' || method === 'reconstruct')
+      ? [`https://www.youtube.com/${options.redirectUrlPath}`, options.redirectParamName, url]
+      : [url, 'disable_polymer', '1'];
+
+    const u = new URL(redirectUrl);
+    const params = new URLSearchParams(u.search);
+    if (params.get(paramName) === paramValue) {
+      return {};
+    }
+    params.set(paramName, paramValue);
+    u.search = params.toString();
+
+    return {
+      redirectUrl: u.toString(),
     };
-    requestHeaders.push(cookieHeader);
-  }
+  }, {
+    urls: ["https://www.youtube.com/*"],
+    types: ["main_frame", "xmlhttprequest"],
+  }, ['blocking']);
 
-  let prefCookie = 'PREF=f1=50000000';
+  chrome.webRequest.onBeforeSendHeaders.addListener(({ url, requestHeaders }) => {
+    const method = getPageFixMethod(url, options);
+    if (method === 'off' || method === 'polymer') {
+      return {};
+    }
 
-  cookieHeader.value = cookieHeader.value
-    .split(';')
-    .filter(cookie => {
-      cookie = cookie.trim();
-      if (cookie.startsWith('PREF=')) {
-        prefCookie = cookie;
-        return false;
-      }
+    const uaHeader = requestHeaders
+      .find(header => header.name.toLowerCase() === "user-agent");
+    uaHeader.value = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
 
-      return cookie !== '';
-    })
-    .concat((() => {
-      return prefCookie
-        .split('&')
-        .filter(cookieValue => !cookieValue.startsWith('f6=') || !cookieValue.startsWith('f5='))
-        .concat('f6=18')
-        .concat('f5=30')
-        .join('&');
-    })())
-    .join(';');
+    return {
+      requestHeaders,
+    };
+  }, {
+    urls: ["https://www.youtube.com/*"],
+    types: ["main_frame"],
+  }, ['blocking', 'requestHeaders']);
 
-  return {
-    requestHeaders,
-  };
-}, {
-  urls: ["*://www.youtube.com/*"],
-  types: ["main_frame"],
-}, ['blocking', 'requestHeaders']);
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    switch (message.type) {
+      case 'getOptions':
+        sendResponse(options);
+        break;
+      case 'resetOption':
+        resetOption(message.name);
+        sendResponse(options);
+        break;
+    }
+
+    if (message.type === 'getOptions') {
+      sendResponse(options);
+    }
+  });
+}
+
+getOptions(main);

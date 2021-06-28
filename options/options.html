@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="options.css">
+  <title>Good old Youtube options</title>
+</head>
+<body>
+  <div id="options">
+    <fieldset>
+      <legend>Page fix methods</legend>
+      <div id="pageFixes"></div>
+      <p>Some methods are known to be broken for certain pages. Enable them your at own risk. Reset settings if necessary.</p>
+    </fieldset>
+    <fieldset>
+      <legend>Other settings:</legend>
+      <div>
+        URL to redirect from:
+      </div>
+      <div id="redirectOptions">
+        <label for="redirectUrlPath">https://www.youtube.com/</label><input type="text" id="redirectUrlPath" />
+        <button id="resetRedirectURL">Reset to default</button>
+      </div>
+      <div>
+        <label><input type="checkbox" id="restoreShowMoreButton"> Restore "Show more" button</label>
+      </div>
+    </fieldset>
+    <button id="resetAll">Reset settings</button>
+  </div>
+  <script src="../shared.js"></script>
+  <script src="default-options.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
