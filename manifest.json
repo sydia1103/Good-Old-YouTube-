@@ -1,7 +1,5 @@
 {
-"update_url": "https://clients2.google.com/service/update2/crx",
-
-  "name": "Good Old YouTube",
+  "name": "Good_Old_YouTube_Fix",
   "manifest_version": 2,
   "version": "1.16.0",
   "description": "Switch back to classic YouTube interface!",
